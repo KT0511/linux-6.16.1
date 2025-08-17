@@ -2798,10 +2798,18 @@ int kvm_get_hv_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid2 *cpuid,
 		case HYPERV_CPUID_VENDOR_AND_MAX_FUNCTIONS:
 			memcpy(signature, "Linux KVM Hv", 12);
 
+			/*
 			ent->eax = HYPERV_CPUID_SYNDBG_PLATFORM_CAPABILITIES;
 			ent->ebx = signature[0];
 			ent->ecx = signature[1];
 			ent->edx = signature[2];
+			*/
+
+			ent->eax = 0;
+			ent->ebx = 0;
+			ent->ecx = 0;
+			ent->edx = 0;
+
 			break;
 
 		case HYPERV_CPUID_INTERFACE:

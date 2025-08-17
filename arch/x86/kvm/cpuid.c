@@ -2060,6 +2060,9 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
 	kvm_rdx_write(vcpu, edx);
+
+	vcpu->lastTSCTouch = rdtsc();
+
 	return kvm_skip_emulated_instruction(vcpu);
 }
 EXPORT_SYMBOL_GPL(kvm_emulate_cpuid);
