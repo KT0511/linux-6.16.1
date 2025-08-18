@@ -2796,19 +2796,19 @@ int kvm_get_hv_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid2 *cpuid,
 
 		switch (ent->function) {
 		case HYPERV_CPUID_VENDOR_AND_MAX_FUNCTIONS:
-			memcpy(signature, "Linux KVM Hv", 12);
-
-			/*
-			ent->eax = HYPERV_CPUID_SYNDBG_PLATFORM_CAPABILITIES;
-			ent->ebx = signature[0];
-			ent->ecx = signature[1];
-			ent->edx = signature[2];
-			*/
+			// COALA
+			//memcpy(signature, "Linux KVM Hv", 12);
+			memcpy(signature, "Microsoft Hv", 12);
 
 			ent->eax = 0;
 			ent->ebx = 0;
 			ent->ecx = 0;
 			ent->edx = 0;
+
+			ent->eax = HYPERV_CPUID_SYNDBG_PLATFORM_CAPABILITIES;
+			ent->ebx = signature[0];
+			ent->ecx = signature[1];
+			ent->edx = signature[2];
 
 			break;
 
@@ -2901,8 +2901,11 @@ int kvm_get_hv_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid2 *cpuid,
 			break;
 
 		case HYPERV_CPUID_SYNDBG_VENDOR_AND_MAX_FUNCTIONS:
-			memcpy(signature, "Linux KVM Hv", 12);
-
+			// COALA
+			//memcpy(signature, "Linux KVM Hv", 12);
+			memcpy(signature, "Microsoft Hv", 12);
+			
+			// COALA
 			ent->eax = 0;
 			ent->ebx = signature[0];
 			ent->ecx = signature[1];

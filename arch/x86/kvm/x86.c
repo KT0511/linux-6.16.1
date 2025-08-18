@@ -2027,6 +2027,12 @@ int kvm_emulate_rdmsr(struct kvm_vcpu *vcpu)
 	u64 data;
 	int r;
 
+	// COALA
+	if(ecx != MSR_EFER && ecx != MSR_LSTAR && !(ecx >= 0x401 && ecx <= 0x425)
+	) {
+		//printk("kvm_emulate_rdmsr() ecx : %X\n", ecx);
+	}
+
 	r = kvm_get_msr_with_filter(vcpu, ecx, &data);
 
 	if (!r) {
@@ -2654,6 +2660,9 @@ static inline bool kvm_check_tsc_unstable(void)
 static void __kvm_synchronize_tsc(struct kvm_vcpu *vcpu, u64 offset, u64 tsc,
 				  u64 ns, bool matched, bool user_set_tsc)
 {
+	// COALA
+	//printk("__kvm_synchronize_tsc\n");
+
 	struct kvm *kvm = vcpu->kvm;
 
 	lockdep_assert_held(&kvm->arch.tsc_write_lock);
@@ -2919,6 +2928,9 @@ static int do_realtime(struct timespec64 *ts, u64 *tsc_timestamp)
  */
 static bool kvm_get_time_and_clockread(s64 *kernel_ns, u64 *tsc_timestamp)
 {
+	// COALA
+	//printk("kvm_get_time_and_clockread\n");
+
 	/* checked again under seqlock below */
 	if (!gtod_is_based_on_tsc(pvclock_gtod_data.clock.vclock_mode))
 		return false;
@@ -4288,7 +4300,14 @@ int kvm_get_msr_common(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			ratio = vcpu->arch.tsc_scaling_ratio;
 		}
 
+		// COALA
+		//printk(KERN_INFO "MSR_IA32_TSC\n");
+		/*
+		if (kvm_x86_call(get_cpl)(vcpu) != 0 || !is_protmode(vcpu))
+			ratio /= 8;
+
 		msr_info->data = kvm_scale_tsc(rdtsc(), ratio) + offset;
+		*/
 		break;
 	}
 	case MSR_IA32_CR_PAT:
@@ -5775,6 +5794,9 @@ static int kvm_arch_tsc_get_attr(struct kvm_vcpu *vcpu,
 static int kvm_arch_tsc_set_attr(struct kvm_vcpu *vcpu,
 				 struct kvm_device_attr *attr)
 {
+	// COALA
+	printk("kvm_arch_tsc_set_attr\n");
+
 	u64 __user *uaddr = u64_to_user_ptr(attr->addr);
 	struct kvm *kvm = vcpu->kvm;
 	int r;
@@ -6200,6 +6222,9 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 
 		if (user_tsc_khz == 0)
 			user_tsc_khz = tsc_khz;
+
+		// COALA
+		printk("VCPU KVM_SET_TSC_KHZ : %u\n", user_tsc_khz);
 
 		if (!kvm_set_tsc_khz(vcpu, user_tsc_khz))
 			r = 0;
@@ -7329,6 +7354,9 @@ set_pit2_out:
 		r = kvm_vm_ioctl_get_clock(kvm, argp);
 		break;
 	case KVM_SET_TSC_KHZ: {
+		// COALA
+		printk("VM KVM_SET_TSC_KHZ\n");
+
 		u32 user_tsc_khz;
 
 		r = -EINVAL;

@@ -696,6 +696,8 @@ int tdx_vcpu_create(struct kvm_vcpu *vcpu)
 	vcpu->arch.tsc_scaling_ratio = kvm_tdx->tsc_multiplier;
 	vcpu->arch.l1_tsc_scaling_ratio = kvm_tdx->tsc_multiplier;
 
+	printk("vcpu->arch.guest_tsc_protected = true;\n");
+
 	vcpu->arch.guest_state_protected =
 		!(to_kvm_tdx(vcpu->kvm)->attributes & TDX_TD_ATTR_DEBUG);
 

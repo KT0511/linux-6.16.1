@@ -49,11 +49,16 @@
  * CONFIG_KVM_MAX_NR_VCPUS is defined iff CONFIG_KVM!=n, provide a dummy max if
  * KVM is disabled (arbitrarily use the default from CONFIG_KVM_MAX_NR_VCPUS).
  */
-#ifdef CONFIG_KVM_MAX_NR_VCPUS
+/*
+ #ifdef CONFIG_KVM_MAX_NR_VCPUS
 #define KVM_MAX_VCPUS CONFIG_KVM_MAX_NR_VCPUS
 #else
 #define KVM_MAX_VCPUS 1024
 #endif
+*/
+
+// COALA
+#define KVM_MAX_VCPUS 64
 
 /*
  * In x86, the VCPU ID corresponds to the APIC ID, and APIC IDs

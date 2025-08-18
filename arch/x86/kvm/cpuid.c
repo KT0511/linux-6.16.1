@@ -1600,7 +1600,9 @@ static inline int __do_cpuid_func(struct kvm_cpuid_array *array, u32 function)
 	}
 	case KVM_CPUID_SIGNATURE: {
 		const u32 *sigptr = (const u32 *)KVM_SIGNATURE;
-		entry->eax = KVM_CPUID_FEATURES;
+		// COALA
+		//entry->eax = KVM_CPUID_FEATURES;
+		entry->eax = 0;
 		entry->ebx = sigptr[0];
 		entry->ecx = sigptr[1];
 		entry->edx = sigptr[2];
@@ -2004,6 +2006,8 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 			    (data & TSX_CTRL_CPUID_CLEAR))
 				*ebx &= ~(feature_bit(RTM) | feature_bit(HLE));
 		} else if (function == 0x80000007) {
+			// COALA
+			printk("ZZZ 1\n");
 			if (kvm_hv_invtsc_suppressed(vcpu))
 				*edx &= ~feature_bit(CONSTANT_TSC);
 		} else if (IS_ENABLED(CONFIG_KVM_XEN) &&
@@ -2013,6 +2017,8 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 			 * Ignore failures, there is no sane value that can be
 			 * provided if KVM can't get the TSC frequency.
 			 */
+			// COALA
+			printk("ZZZ 2\n");
 			if (kvm_check_request(KVM_REQ_CLOCK_UPDATE, vcpu))
 				kvm_guest_time_update(vcpu);
 
@@ -2055,14 +2061,19 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
+
+	// COALA
+	//printk("cpuid eax : %X, ecx : %X", eax, ecx);
+
 	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
 	kvm_rdx_write(vcpu, edx);
 
+	int result = kvm_skip_emulated_instruction(vcpu);
+	
 	vcpu->lastTSCTouch = rdtsc();
-
-	return kvm_skip_emulated_instruction(vcpu);
+	return result;
 }
 EXPORT_SYMBOL_GPL(kvm_emulate_cpuid);

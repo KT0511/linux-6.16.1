@@ -4485,8 +4485,8 @@ static u32 vmx_exec_control(struct vcpu_vmx *vmx)
 	if (kvm_hlt_in_guest(vmx->vcpu.kvm))
 		exec_control &= ~CPU_BASED_HLT_EXITING;
 
-	//COALA
-	exec_control |= CPU_BASED_RDTSC_EXITING;
+	// COALA
+	//exec_control |= CPU_BASED_RDTSC_EXITING;
 
 	return exec_control;
 }
@@ -6083,14 +6083,65 @@ static int handle_notify(struct kvm_vcpu *vcpu)
 
 // COALA
 
-volatile uint64_t globalTSC = 0;
-volatile uint64_t lowestTSC = 0;
+int adjustTimestampCountersTimeout = 3000;
 
-int adjustTimestampCounters = 1;
-int adjustTimestampCountersTimeout = 2000;
+//static u32 print_once = 1;
 
-static u32 print_once = 1;
+static __always_inline u64 mul_u64_u64_shr0(u64 a, u64 mul, unsigned int shift)
+{
+	return (u64)(((unsigned __int128)a * mul) >> shift);
+}
 
+static inline u64 __scale_tsc0(u64 ratio, u64 tsc)
+{
+	return mul_u64_u64_shr0(tsc, ratio, kvm_caps.tsc_scaling_ratio_frac_bits);
+}
+
+static inline u64 kvm_scale_tsc0(u64 tsc, u64 ratio)
+{
+	u64 _tsc = tsc;
+
+	if (ratio != kvm_caps.default_tsc_scaling_ratio)
+		_tsc = __scale_tsc0(ratio, tsc);
+
+	return _tsc;
+}
+
+/*
+static int handle_rdtsc(struct kvm_vcpu *vcpu) {
+	u64 offset = vcpu->arch.tsc_offset;
+	u64 ratio = vcpu->arch.tsc_scaling_ratio;
+	u64 rdtsc_fake;
+
+	if (vmx_get_cpl(vcpu) != 0 || !is_protmode(vcpu))
+		ratio /= 8;
+	
+	rdtsc_fake = kvm_scale_tsc0(rdtsc(), ratio) + offset;
+
+	vcpu->arch.regs[VCPU_REGS_RAX] = rdtsc_fake & -1u;
+	vcpu->arch.regs[VCPU_REGS_RDX] = (rdtsc_fake >> 32) & -1u;
+
+	return skip_emulated_instruction(vcpu);
+}
+
+
+static int handle_rdtscp(struct kvm_vcpu *vcpu) {
+	vcpu->arch.regs[VCPU_REGS_RCX] = vmcs_read16(VIRTUAL_PROCESSOR_ID);
+	return handle_rdtsc(vcpu);
+}
+*/
+
+static int handle_umwait(struct kvm_vcpu *vcpu)
+{
+	return skip_emulated_instruction(vcpu);
+}
+
+static int handle_tpause(struct kvm_vcpu *vcpu)
+{
+	return skip_emulated_instruction(vcpu);
+}
+
+/*
 static int handle_rdtsc(struct kvm_vcpu *vcpu) 
 { 
 	static u64 rdtsc_fake = 0;
@@ -6109,7 +6160,7 @@ static int handle_rdtsc(struct kvm_vcpu *vcpu)
 		if(rdtsc_real > rdtsc_prev)
 		{
 			u64 diff = rdtsc_real - rdtsc_prev;
-			u64 fake_diff =  diff / 16; // if you have 4.2Ghz on your vm, change 16 to 20 
+			u64 fake_diff =  diff / 18; // if you have 4.2Ghz on your vm, change 16 to 20 
 			rdtsc_fake += fake_diff;
 		}
 	}
@@ -6125,58 +6176,41 @@ static int handle_rdtsc(struct kvm_vcpu *vcpu)
 
 	return skip_emulated_instruction(vcpu);
 }
+*/
 
-/*
-static int handle_rdtsc(struct kvm_vcpu *vcpu) 
+static int handle_rdtsc(struct kvm_vcpu *vcpu)
 {
-	if(print_once)
-	{
-		printk("[handle_rdtsc] rdtsc adjust.\n");
-		print_once = 0;
+	uint64_t t = rdtsc();
+
+	if((t - vcpu->lastTSCTouch) < adjustTimestampCountersTimeout) {
+		int off = 20 + (t & 0xf);
+		off = 1;
+		
+		t = vcpu->lowestTSC + off;
+
+		vcpu->lowestTSC = t;
 	}
-
-	uint64_t t = 0;
-	uint64_t lTSC = lowestTSC;
-	uint64_t realtime = 0;
-
-	if(lTSC < vcpu->lowestTSC)
-		lTSC = vcpu->lowestTSC;
-
-	realtime = rdtsc();
-
-	t = realtime;
-
-	if(lTSC == 0)
-		lTSC = t;
-
-	if(t < lTSC) {
-		lTSC = t;
-	}
-
-	if(adjustTimestampCounters) {
-		if((realtime - vcpu->lastTSCTouch) < adjustTimestampCountersTimeout) {
-			int off = 20 + (realtime & 0xf);
-
-			t = vcpu->lowestTSC + off;
-
-			vcpu->lowestTSC = t;
-		}
-		else {
-			if(lowestTSC < t)
-				lowestTSC = t;
-			vcpu->lowestTSC = t;
-		}
+	else {
+		vcpu->lowestTSC = t;
 	}
 
 	vcpu->arch.regs[VCPU_REGS_RAX] = t & -1u;
-	vcpu->arch.regs[VCPU_REGS_RDX] = t >> 32;
+	vcpu->arch.regs[VCPU_REGS_RDX] = (t >> 32) & -1u;
 
-	if(lowestTSC < t)
-		lowestTSC = t;  
+	unsigned long rip, orig_rip;
+	u32 instr_len;
+	instr_len = vmcs_read32(VM_EXIT_INSTRUCTION_LEN);
 
-	return skip_emulated_instruction(vcpu);
+	orig_rip = kvm_rip_read(vcpu);
+	rip = orig_rip + instr_len;
+	kvm_rip_write(vcpu, rip);
+
+	//int result = skip_emulated_instruction(vcpu);
+	int result = 1;
+
+	vcpu->lastTSCTouch = rdtsc();
+	return result;
 }
-*/
 
 static int handle_rdtscp(struct kvm_vcpu *vcpu) 
 {
@@ -6184,23 +6218,18 @@ static int handle_rdtscp(struct kvm_vcpu *vcpu)
 
 	if((t - vcpu->lastTSCTouch) < adjustTimestampCountersTimeout) {
 		int off = 20 + (t & 0xf);
-		off = 1;
+		//off = 1;
 
 		t = vcpu->lowestTSC + off;
 
 		vcpu->lowestTSC = t;
 	}
 	else {
-		if(lowestTSC < t)
-			lowestTSC = t;
 		vcpu->lowestTSC = t;
 	}
 
 	vcpu->arch.regs[VCPU_REGS_RAX] = t & -1u;
 	vcpu->arch.regs[VCPU_REGS_RDX] = (t >> 32) & -1u;
-
-	if(lowestTSC < t)
-		lowestTSC = t;
 
 	int result = skip_emulated_instruction(vcpu);
 	
@@ -6272,6 +6301,9 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	// COALA
 	[EXIT_REASON_RDTSC] = handle_rdtsc,
 	[EXIT_REASON_RDTSCP] = handle_rdtscp,
+
+	[EXIT_REASON_UMWAIT] = handle_umwait,
+	[EXIT_REASON_TPAUSE] = handle_tpause,
 };
 
 static const int kvm_vmx_max_exit_handlers =
